@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+*/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Expo & Metro
+.expo/
+dist/
+web-build/
+.metro-health-check*
+
+# Backend (Maven / Java)
+target/
+Backend/target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Logs
+*.log
+
+# IDE & Editor files
+.idea/
+Backend/.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env*.local
