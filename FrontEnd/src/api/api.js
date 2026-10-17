@@ -1,9 +1,11 @@
-// 🖥️ Your active working computer IP configuration
-const SERVER_ORIGIN = "http://192.168.0.4:8080"; // Replace with your actual local IP address and port
-const BASE_URL = "http://192.168.0.4:8080/api/grievances";
-const AUTH_URL = "http://192.168.0.4:8080/api/auth";
-const OFFICER_URL = "http://192.168.0.4:8080/api/v1/officer";
-const SUPERVISOR_URL = "http://192.168.0.4:8080/api/v1/supervisor";
+import { SERVER_ORIGIN, API_ENDPOINTS, GEOCODING_CONFIG } from "../config/env";
+
+// 🏛️ Official Endpoints routed through centralized configuration
+const BASE_URL = API_ENDPOINTS.grievances;
+const AUTH_URL = API_ENDPOINTS.auth;
+const OFFICER_URL = API_ENDPOINTS.officer;
+const SUPERVISOR_URL = API_ENDPOINTS.supervisor;
+const NOTIFICATIONS_URL = API_ENDPOINTS.notifications;
 
 /**
  * 🖼️ Resolves a relative media path (e.g. "/uploads/images/xyz.jpg") returned by
@@ -238,8 +240,6 @@ async function confirmResolution(grievanceId, citizenId, confirmed, note) {
   }
 }
 
-const NOTIFICATIONS_URL = `${SERVER_ORIGIN}/api/notifications`;
-
 /**
  * 🔔 FETCH IN-APP NOTIFICATIONS for a user (citizen or officer id).
  */
@@ -354,6 +354,92 @@ async function fetchSupervisorOverview() {
   }
 }
 
+/**
+ * 📍 REVERSE GEOCODE INDIAN GPS COORDINATES
+ * Resolves latitude and longitude into door/street, ward, sub-locality, city, state, and pincode.
+ */
+async function reverseGeocodeIndianAddress(latitude, longitude) {
+  try {
+    const url = `${GEOCODING_CONFIG.NOMINATIM_REVERSE}?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "CivicSync-Government-Redressal-Platform/1.0"
+      }
+    });
+    if (!response.ok) throw new Error(`Geocoding HTTP error: ${response.status}`);
+    const data = await response.json();
+    const addr = data.address || {};
+
+    const street = addr.road || addr.street || addr.pedestrian || addr.suburb || "Street Area";
+    const ward = addr.suburb || addr.neighbourhood || addr.city_district || addr.quarter || "Ward Boundary";
+    const city = addr.city || addr.town || addr.village || addr.county || "Municipal District";
+    const state = addr.state || "Tamil Nadu";
+    const pincode = addr.postcode || "";
+
+    const formattedAddress = [street, ward, city, pincode].filter(Boolean).join(", ");
+
+    return {
+      formattedAddress: data.display_name || formattedAddress,
+      street,
+      ward,
+      city,
+      state,
+      pincode,
+      raw: data,
+    };
+  } catch (error) {
+    console.warn("Reverse geocode warning:", error.message);
+    return {
+      formattedAddress: `Lat: ${Number(latitude).toFixed(4)}, Lng: ${Number(longitude).toFixed(4)}`,
+      street: "Target Location",
+      ward: "Municipal Area",
+      city: "District Area",
+      state: "India",
+      pincode: "",
+    };
+  }
+}
+
+/**
+ * 🔍 SEARCH INDIAN ADDRESSES & PLACES
+ * Autocompletes Indian streets, landmarks, colonies, wards, and PIN codes.
+ */
+async function searchIndianLocations(query) {
+  if (!query || query.trim().length < 2) return [];
+  try {
+    const url = `${GEOCODING_CONFIG.NOMINATIM_SEARCH}?format=jsonv2&q=${encodeURIComponent(query.trim())}&countrycodes=${GEOCODING_CONFIG.COUNTRY_CODES}&limit=6&addressdetails=1`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "CivicSync-Government-Redressal-Platform/1.0"
+      }
+    });
+    if (!response.ok) return [];
+    const results = await response.json();
+    return (results || []).map((item) => {
+      const addr = item.address || {};
+      const street = addr.road || addr.pedestrian || addr.suburb || item.name || "Area";
+      const city = addr.city || addr.town || addr.village || addr.county || "";
+      const state = addr.state || "";
+      const pincode = addr.postcode || "";
+      return {
+        id: item.place_id ? String(item.place_id) : Math.random().toString(),
+        latitude: parseFloat(item.lat),
+        longitude: parseFloat(item.lon),
+        displayName: item.display_name,
+        shortTitle: `${street}${city ? ", " + city : ""}`,
+        city,
+        state,
+        pincode,
+      };
+    });
+  } catch (error) {
+    console.error("Indian location search error:", error);
+    return [];
+  }
+}
+
 // 📦 Unified Clean Exports Block (No duplicates!)
 export {
   fetchGrievances,
@@ -376,4 +462,6 @@ export {
   fetchOfficerOptions,
   assignOfficerToGrievance,
   fetchSupervisorOverview,
+  reverseGeocodeIndianAddress,
+  searchIndianLocations,
 };

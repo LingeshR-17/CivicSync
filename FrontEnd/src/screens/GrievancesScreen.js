@@ -110,16 +110,16 @@ export default function GrievancesScreen({ currentUserId }) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#07161b' }}>
-        <ActivityIndicator size="large" color="#a5f3fc" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#060d19' }}>
+        <ActivityIndicator size="large" color="#38bdf8" />
       </View>
     );
   }
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { backgroundColor: '#060d19' }]}>
       <View style={styles.screenHeaderContainer}>
-        <Text style={styles.leftAlignedScreenTitle}>MY GRIEVANCES</Text>
+        <Text style={styles.leftAlignedScreenTitle}>MUNICIPAL GRIEVANCE TRACKER</Text>
       </View>
 
       <View style={styles.summaryBannerCard}>

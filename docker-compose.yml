@@ -1,0 +1,43 @@
+services:
+  # 🗄️ PostgreSQL Database with PostGIS Spatial Extension Pre-Configured
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: civicsync-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: civic_sync_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - civicsync_pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d civic_sync_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+
+  # ⚙️ Spring Boot API Backend (Optional: can run in container or locally via Maven)
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: civicsync-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/civic_sync_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./Backend/uploads:/app/uploads
+
+volumes:
+  civicsync_pgdata:
+    driver: local

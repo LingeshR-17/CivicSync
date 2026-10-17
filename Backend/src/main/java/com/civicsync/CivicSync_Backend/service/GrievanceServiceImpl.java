@@ -326,7 +326,37 @@ public class GrievanceServiceImpl implements GrievanceService {
         return null;
     }
 
+    private static final java.util.Map<Integer, String> DEPT_CODES = java.util.Map.of(
+            1, "SAN",
+            2, "ELE",
+            3, "WAT",
+            4, "ROA",
+            5, "HEA",
+            6, "EDU",
+            7, "TRA",
+            8, "SEW"
+    );
+
+    private static final java.util.Map<String, Integer> DEPT_NAMES = java.util.Map.of(
+            "sanitation", 1,
+            "electricity", 2,
+            "water", 3,
+            "roads", 4,
+            "health", 5,
+            "education", 6,
+            "transport", 7,
+            "sewage", 8
+    );
+
     private Integer fetchDepartmentIdByName(String name) {
+        if (name != null) {
+            String lower = name.trim().toLowerCase();
+            for (java.util.Map.Entry<String, Integer> entry : DEPT_NAMES.entrySet()) {
+                if (lower.contains(entry.getKey())) {
+                    return entry.getValue();
+                }
+            }
+        }
         try {
             return jdbcTemplate.queryForObject("SELECT id FROM departments WHERE name = ? LIMIT 1", Integer.class, name);
         } catch (Exception e) {
@@ -335,6 +365,9 @@ public class GrievanceServiceImpl implements GrievanceService {
     }
 
     private String fetchDepartmentCodeById(Integer id) {
+        if (id != null && DEPT_CODES.containsKey(id)) {
+            return DEPT_CODES.get(id);
+        }
         try {
             return jdbcTemplate.queryForObject("SELECT code FROM departments WHERE id = ? LIMIT 1", String.class, id);
         } catch (Exception e) {
@@ -382,15 +415,23 @@ public class GrievanceServiceImpl implements GrievanceService {
 
     private void determinePriorityAndSla(Grievance g, String category) {
         ZonedDateTime targetTime = ZonedDateTime.now();
-        if ("Water Supply".equalsIgnoreCase(category)) {
-            g.setPriority("HIGH");
-            g.setSlaDeadline(targetTime.plusHours(24));
-        } else if ("Electricity".equalsIgnoreCase(category)) {
+        Integer deptId = g.getDepartmentId();
+
+        if ("Electricity".equalsIgnoreCase(category) || (deptId != null && deptId == 2)) {
             g.setPriority("CRITICAL");
             g.setSlaDeadline(targetTime.plusHours(2));
-        } else {
+        } else if ("Water Supply".equalsIgnoreCase(category) || (deptId != null && deptId == 3)) {
+            g.setPriority("HIGH");
+            g.setSlaDeadline(targetTime.plusHours(24));
+        } else if ("Roads & Bridges".equalsIgnoreCase(category) || (deptId != null && deptId == 4)) {
             g.setPriority("MEDIUM");
             g.setSlaDeadline(targetTime.plusHours(48));
+        } else if ("Sanitation".equalsIgnoreCase(category) || (deptId != null && deptId == 1)) {
+            g.setPriority("MEDIUM");
+            g.setSlaDeadline(targetTime.plusHours(24));
+        } else {
+            g.setPriority("MEDIUM");
+            g.setSlaDeadline(targetTime.plusHours(72));
         }
     }
 }

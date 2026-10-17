@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, Component } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -41,6 +41,7 @@ import NotificationsScreen from "./src/screens/NotificationsScreen";
 import NotificationBell from "./src/components/NotificationBell";
 
 import { styles } from "./src/styles/globalStyles";
+import { civicTheme } from "./src/styles/civicTheme";
 
 // ==========================================
 // 👤 MAIN CITIZEN DASHBOARD (Authenticated View Layer)
@@ -133,6 +134,7 @@ function UserDashboard() {
             navigate={customNavigate}
             userLocation={sharedLocation}
             currentUserId={user?.id}
+            setSharedLocation={setSharedLocation}
           />
         );
       case "fileGrievance":
@@ -166,7 +168,7 @@ function UserDashboard() {
 
   return (
     <LinearGradient
-      colors={["#103e4b", "#07161b"]}
+      colors={civicTheme.colors.gradients.officialNavy}
       style={styles.appViewContainer}
     >
       <StatusBar barStyle="light-content" />
@@ -184,12 +186,12 @@ function UserDashboard() {
               <Ionicons
                 name="home"
                 size={20}
-                color={currentScreen === "home" ? "#a5f3fc" : "#94a3b8"}
+                color={currentScreen === "home" ? civicTheme.colors.civicBlueLight : "#94a3b8"}
               />
               <Text
                 style={[
                   styles.tabBarLabelText,
-                  { color: currentScreen === "home" ? "#a5f3fc" : "#94a3b8" },
+                  { color: currentScreen === "home" ? civicTheme.colors.civicBlueLight : "#94a3b8" },
                 ]}
               >
                 Home
@@ -206,14 +208,14 @@ function UserDashboard() {
               <Ionicons
                 name="folder-open"
                 size={20}
-                color={currentScreen === "grievances" ? "#a5f3fc" : "#94a3b8"}
+                color={currentScreen === "grievances" ? civicTheme.colors.civicBlueLight : "#94a3b8"}
               />
               <Text
                 style={[
                   styles.tabBarLabelText,
                   {
                     color:
-                      currentScreen === "grievances" ? "#a5f3fc" : "#94a3b8",
+                      currentScreen === "grievances" ? civicTheme.colors.civicBlueLight : "#94a3b8",
                   },
                 ]}
               >
@@ -233,7 +235,7 @@ function UserDashboard() {
                 size={20}
                 color={
                   ["departments", "department-feed"].includes(currentScreen)
-                    ? "#a5f3fc"
+                    ? civicTheme.colors.civicBlueLight
                     : "#94a3b8"
                 }
               />
@@ -244,7 +246,7 @@ function UserDashboard() {
                     color: ["departments", "department-feed"].includes(
                       currentScreen,
                     )
-                      ? "#a5f3fc"
+                      ? civicTheme.colors.civicBlueLight
                       : "#94a3b8",
                   },
                 ]}
@@ -270,7 +272,7 @@ function UserDashboard() {
                     "privacy-security",
                     "app-feedback",
                   ].includes(currentScreen)
-                    ? "#a5f3fc"
+                    ? civicTheme.colors.civicBlueLight
                     : "#94a3b8"
                 }
               />
@@ -284,7 +286,7 @@ function UserDashboard() {
                       "privacy-security",
                       "app-feedback",
                     ].includes(currentScreen)
-                      ? "#a5f3fc"
+                      ? civicTheme.colors.civicBlueLight
                       : "#94a3b8",
                   },
                 ]}
@@ -378,12 +380,84 @@ function NavigationRoot() {
 }
 
 // ==========================================
+// 🛡️ ERROR BOUNDARY (Prevents white blank screens on unhandled errors)
+// ==========================================
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error("CivicSync Error Boundary Caught:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "#060d19",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+        >
+          <Text
+            style={{
+              color: "#ef4444",
+              fontSize: 18,
+              fontWeight: "bold",
+              marginBottom: 10,
+              textAlign: "center",
+            }}
+          >
+            Interface Encountered An Issue
+          </Text>
+          <Text
+            style={{
+              color: "#94a3b8",
+              fontSize: 13,
+              textAlign: "center",
+              marginBottom: 20,
+              maxWidth: 400,
+            }}
+          >
+            {this.state.error?.message || "Unexpected exception during render."}
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#0284c7",
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>
+              Reload Screen
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ==========================================
 // 🏢 APP ROOT ENTRY POINT
 // ==========================================
 export default function App() {
   return (
-    <AuthProvider>
-      <NavigationRoot />
-    </AuthProvider>
+    <SafeAreaProvider style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <AuthProvider>
+          <NavigationRoot />
+        </AuthProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }

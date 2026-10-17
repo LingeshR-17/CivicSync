@@ -59,15 +59,21 @@ public class SupervisorServiceImpl implements SupervisorService {
         Grievance g = grievanceRepository.findById(grievanceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Grievance not found with ID: " + grievanceId));
 
-        if (g.getWardId() == null || g.getDepartmentId() == null) {
-            // No ward/department detected at all (e.g. GPS pin fell outside every seeded ward
-            // polygon) — nothing to auto-filter on, supervisor sees an empty pick list and
-            // must escalate outside the app. Better to say so plainly than pretend a match exists.
-            return List.of();
+        List<User> candidates = List.of();
+        if (g.getWardId() != null && g.getDepartmentId() != null) {
+            candidates = userRepository.findByRoleAndWardIdAndDepartmentId(
+                    "FIELD_OFFICER", g.getWardId(), g.getDepartmentId());
         }
 
-        List<User> candidates = userRepository.findByRoleAndWardIdAndDepartmentId(
-                "FIELD_OFFICER", g.getWardId(), g.getDepartmentId());
+        // 🎯 Fallback 1: match officers in the same department across any ward
+        if (candidates.isEmpty() && g.getDepartmentId() != null) {
+            candidates = userRepository.findByRoleAndDepartmentId("FIELD_OFFICER", g.getDepartmentId());
+        }
+
+        // 🎯 Fallback 2: show all available field officers so supervisor is never blocked
+        if (candidates.isEmpty()) {
+            candidates = userRepository.findByRole("FIELD_OFFICER");
+        }
 
         return candidates.stream().map(officer -> {
             OfficerOptionDTO dto = new OfficerOptionDTO();

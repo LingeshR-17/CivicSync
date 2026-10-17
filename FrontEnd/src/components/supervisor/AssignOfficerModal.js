@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal, View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SUPERVISOR_COLORS, SUPERVISOR_SPACING } from '../../screens/supervisor/supervisorTheme';
@@ -36,9 +36,20 @@ export default function AssignOfficerModal({ visible, ticket, supervisorId, onCl
     setIsSubmitting(true);
     try {
       await assignOfficerToGrievance(ticket.id, selectedOfficerId, supervisorId);
+      const msg = `Ticket ${ticket.ticketNumber || ticket.id} has been successfully assigned!`;
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(msg);
+      } else {
+        Alert.alert('Assignment Successful', msg);
+      }
       onAssigned?.();
     } catch (e) {
-      Alert.alert('Assignment failed', 'Could not assign this officer. Please try again.');
+      const errMsg = e.response?.data?.error || e.message || 'Could not assign this officer. Please try again.';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`Assignment Failed: ${errMsg}`);
+      } else {
+        Alert.alert('Assignment failed', errMsg);
+      }
     } finally {
       setIsSubmitting(false);
     }
